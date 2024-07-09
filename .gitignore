@@ -1,0 +1,15 @@
+# prometheus_grafana
+/prometheus_grafana/grafana-data/*
+/prometheus_grafana/prometheus-data/data/*
+
+# mysql8
+/mysql8/data/*
+
+# jenkins
+/jenkins/jenkins_home/*
+
+# redis 
+/redis/data/redis-data/*
+
+# postSQL
+/postSQL/apps/data/*

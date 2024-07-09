@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  php82:
+    build:
+      context: ./
+    ports:
+      - "9000:80"
