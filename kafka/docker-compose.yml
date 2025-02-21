@@ -1,4 +1,3 @@
-version: "3"
 services:
   zookeeper:
     image: 'bitnami/zookeeper:latest'
@@ -10,6 +9,8 @@ services:
       #volumes:
       #- ./zookeeper:/bitnami/zookeeper
       # 该镜像具体配置参考 https://github.com/bitnami/bitnami-docker-kafka/blob/master/README.md
+    networks:
+      - kafka_net
   kafka:
     image: 'bitnami/kafka:latest'
     ports:
@@ -18,15 +19,16 @@ services:
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,INTERNAL://0.0.0.0:29092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      # 客户端访问地址，更换成自己的
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
       # - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
       # - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       # - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       # - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       # - KAFKA_CFG_ZOOKEEPER_METADATA_MIGRATION_ENABLE=true
-      # 客户端访问地址，更换成自己的
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       # 允许使用PLAINTEXT协议(镜像中默认为关闭,需要手动开启)
       - ALLOW_PLAINTEXT_LISTENER=yes
@@ -38,39 +40,55 @@ services:
       # - JMX_PORT=9999
       #volumes:
       #- ./kafka:/bitnami/kafka
-    # depends_on:
-      # - zookeeper
-  # Web 管理界面 另外也可以用exporter+prometheus+grafana的方式来监控 https://github.com/danielqsj/kafka_exporter
-  # kafka_manager 只有支援 linux/amd64
-  # kafka_manager:
-  #   image: 'hlebalbau/kafka-manager:latest'
-  #   ports:
-  #     - "9000:9000"
-  #   environment:
-  #     ZK_HOSTS: "zookeeper:2181"
-  #     APPLICATION_SECRET: letmein
-  #   depends_on:
-  #     - zookeeper
-  #     - kafka
-  kafka-ui:
-    image: provectuslabs/kafka-ui
-    container_name: kafka-ui
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka_net
+      # Web 管理界面 另外也可以用exporter+prometheus+grafana的方式来监控 https://github.com/danielqsj/kafka_exporter
+      # kafka_manager 只有支援 linux/amd64
+      # kafka_manager:
+      #   image: 'hlebalbau/kafka-manager:latest'
+      #   ports:
+      #     - "9000:9000"
+      #   environment:
+      #     ZK_HOSTS: "zookeeper:2181"
+      #     APPLICATION_SECRET: letmein
+      #   depends_on:
+      #     - zookeeper
+      #     - kafka
+      # kafka-ui:
+      #   image: provectuslabs/kafka-ui
+      #   container_name: kafka-ui
+      #   ports:
+      #     - "8082:8080"
+      #   environment:
+      #     - KAFKA_CLUSTERS_0_NAME=local-kafka
+      #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      #     - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+      #     # - KAFKA_CLUSTERS_0_READONLY=true
+      #   depends_on:
+      #     - kafka
+      #     - zookeeper
+      # Redpanda:
+      #   image: redpandadata/console:latest
+      #   ports:
+      #     - "8083:8080"
+      #   environment:
+      #     - KAFKA_BROKERS=kafka:9092
+      #   depends_on:
+      #     - kafka
+      #     - zookeeper
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
     ports:
-      - "8082:8080"
+      - "9000:9000" # 浏览器访问端口
     environment:
-      - KAFKA_CLUSTERS_0_NAME=local-kafka
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
-      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
-      # - KAFKA_CLUSTERS_0_READONLY=true
+      KAFKA_BROKERCONNECT: "kafka:29092" # 指向 Kafka 服务地址
+      JVM_OPTS: "-Xms32M -Xmx64M" # 内存配置
+      # SERVER_SERVLET_CONTEXT_PATH: "/"
     depends_on:
       - kafka
-      - zookeeper
-  Redpanda:
-    image: redpandadata/console:latest
-    ports:
-      - "8083:8080"
-    environment:
-      - KAFKA_BROKERS=kafka:9092
-    depends_on:
-      - kafka
-      - zookeeper
+    networks:
+      - kafka_net
+networks:
+  kafka_net:
